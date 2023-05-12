@@ -86,11 +86,11 @@ total_words = 0
 extension = "html"
 
 def output_path(pattern):
-  return extension + "/" + pattern + "." + extension
+  return f"{extension}/{pattern}.{extension}"
 
 
 def cpp_path(pattern):
-  return 'code/cpp/' + pattern + '.h'
+  return f'code/cpp/{pattern}.h'
 
 
 def pretty(text):
@@ -164,7 +164,7 @@ def format_file(path, nav, skip_up_to_date):
 
         # Add an anchor to the header.
         contents += indentation + headertype
-        contents += '<a href="#' + anchor + '" name="' + anchor + '">' + header + '</a>\n'
+        contents += f'<a href="#{anchor}" name="{anchor}">{header}' + '</a>\n'
 
         # Build the navigation.
         if len(headertype) == 2:
@@ -176,7 +176,7 @@ def format_file(path, nav, skip_up_to_date):
   modified = datetime.fromtimestamp(os.path.getmtime(path))
   mod_str = modified.strftime('%B %d, %Y')
 
-  with open("asset/template." + extension) as f:
+  with open(f"asset/template.{extension}") as f:
     template = f.read()
 
   # Write the output.
@@ -185,10 +185,9 @@ def format_file(path, nav, skip_up_to_date):
     section_header = ""
 
     if section != "":
-      title_text = title + " &middot; " + section
+      title_text = f"{title} &middot; {section}"
       section_href = section.lower().replace(" ", "-")
-      section_header = '<span class="section"><a href="{}.html">{}</a></span>'.format(
-        section_href, section)
+      section_header = f'<span class="section"><a href="{section_href}.html">{section}</a></span>'
 
     prev_link, next_link = make_prev_next(title)
 
@@ -224,19 +223,16 @@ def format_file(path, nav, skip_up_to_date):
     num_chapters += 1
     if word_count < 50:
       empty_chapters += 1
-      print("  {}".format(basename))
+      print(f"  {basename}")
     elif word_count < 2000:
       empty_chapters += 1
-      print("{}-{} {} ({} words)".format(
-        YELLOW, DEFAULT, basename, word_count))
+      print(f"{YELLOW}-{DEFAULT} {basename} ({word_count} words)")
     else:
       total_words += word_count
-      print("{}✓{} {} ({} words)".format(
-        GREEN, DEFAULT, basename, word_count))
+      print(f"{GREEN}✓{DEFAULT} {basename} ({word_count} words)")
   else:
     # Section header chapters aren't counted like regular chapters.
-    print("{}•{} {} ({} words)".format(
-      GREEN, DEFAULT, basename, word_count))
+    print(f"{GREEN}•{DEFAULT} {basename} ({word_count} words)")
 
 
 def clean_up_xml(output):
@@ -266,11 +262,11 @@ def clean_up_xml(output):
   def fix_link(match):
     tag = match.group(1)
     contents = match.group(2)
-    href = re.search(r'href\s*=\s*"([^"]+)"', tag).group(1)
+    href = re.search(r'href\s*=\s*"([^"]+)"', tag)[1]
 
     # If it's not a link to a chapter, just return the contents of the link and
     # strip out the link itself.
-    if not href in CHAPTER_HREFS:
+    if href not in CHAPTER_HREFS:
       return contents
 
     # Turn it into a chapter number reference.
@@ -314,11 +310,7 @@ def clean_up_xml(output):
       in_code = False
       result += chunk
     else:
-      if in_code:
-        result += clean_up_code_xml(chunk)
-      else:
-        result += clean_up_xhtml(chunk)
-
+      result += clean_up_code_xml(chunk) if in_code else clean_up_xhtml(chunk)
   return result
 
 
@@ -338,13 +330,11 @@ def make_prev_next(title):
   next_link = ""
   if chapter_index > 0:
     prev_href = title_to_file(CHAPTERS[chapter_index - 1])
-    prev_link = '<span class="prev">&larr; <a href="{}.html">Previous Chapter</a></span>'.format(
-      prev_href, CHAPTERS[chapter_index - 1])
+    prev_link = f'<span class="prev">&larr; <a href="{prev_href}.html">Previous Chapter</a></span>'
 
   if chapter_index < len(CHAPTERS) - 1:
     next_href = title_to_file(CHAPTERS[chapter_index + 1])
-    next_link = '<span class="next"><a href="{}.html">Next Chapter</a> &rarr;</span>'.format(
-      next_href, CHAPTERS[chapter_index + 1])
+    next_link = f'<span class="next"><a href="{next_href}.html">Next Chapter</a> &rarr;</span>'
 
   return (prev_link, next_link)
 
@@ -366,7 +356,7 @@ def navigation_to_html(chapter, headers):
       nav += '</li></ul>\n'
       currentdepth -= 1
 
-    nav += '<a href="#' + anchor + '">' + header + '</a>'
+    nav += f'<a href="#{anchor}">{header}</a>'
 
 
   # Close the lists.
@@ -391,14 +381,14 @@ def include_code(pattern, index, indentation):
     stripped = line.strip()
 
     if inblock:
-      if stripped == '//^' + index:
+      if stripped == f'//^{index}':
         # End of our block.
         break
 
       elif stripped == '//^omit':
         omitting = not omitting
 
-      elif stripped == '//^omit ' + index:
+      elif stripped == f'//^omit {index}':
         # Omitting a section just for this block. Other blocks that
         # Contain this code may not omit it.
         omitting_name = not omitting_name
@@ -417,22 +407,18 @@ def include_code(pattern, index, indentation):
         else:
           code_line = line[blockindent:]
           if len(code_line) > 64:
-            print("Warning long source line ({} chars):\n{}".format(
-                len(code_line), code_line))
-          code += indentation + '    ' + code_line
+            print(f"Warning long source line ({len(code_line)} chars):\n{code_line}")
+          code += f'{indentation}    {code_line}'
 
-    else:
-      if stripped == '//^' + index:
-        inblock = True
-        blockindent = len(line) - len(line.lstrip())
+    elif stripped == f'//^{index}':
+      inblock = True
+      blockindent = len(line) - len(line.lstrip())
 
   return code
 
 
 def buildnav(searchpath):
-  nav = '<div class="nav">\n'
-  nav = nav + '<h1><a href="/">Navigation</a></h1>\n'
-
+  nav = '<div class="nav">\n' + '<h1><a href="/">Navigation</a></h1>\n'
   # Read the chapter outline from the index page.
   with open('html/index.html', 'r') as source:
     innav = False
@@ -442,12 +428,11 @@ def buildnav(searchpath):
         nav = nav + line
         if line.startswith('</ul'):
           break;
-      else:
-        if line.startswith('<ul>'):
-          nav = nav + line
-          innav = True
+      elif line.startswith('<ul>'):
+        nav = nav + line
+        innav = True
 
-  nav = nav + '</div>'
+  nav = f'{nav}</div>'
 
   return nav
 
@@ -455,7 +440,7 @@ def buildnav(searchpath):
 def format_files(file_filter, skip_up_to_date):
   '''Process each markdown file.'''
   for f in glob.iglob(searchpath):
-    if file_filter == None or file_filter in f:
+    if file_filter is None or file_filter in f:
       format_file(f, nav, skip_up_to_date)
 
 
@@ -466,7 +451,7 @@ def check_sass():
     return
 
   subprocess.call(['sass', 'asset/style.scss', 'html/style.css'])
-  print("{}✓{} style.css".format(GREEN, DEFAULT))
+  print(f"{GREEN}✓{DEFAULT} style.css")
 
 
 searchpath = ('book/*.markdown')
@@ -483,16 +468,11 @@ else:
     extension = "xml"
     del sys.argv[1]
 
-  # Can specify a file name filter to just regenerate a subset of the files.
-  file_filter = None
-  if len(sys.argv) > 1:
-    file_filter = sys.argv[1]
-
+  file_filter = sys.argv[1] if len(sys.argv) > 1 else None
   format_files(file_filter, False)
 
   average_word_count = total_words / (num_chapters - empty_chapters)
   estimated_word_count = total_words + (empty_chapters * average_word_count)
   percent_finished = total_words * 100 / estimated_word_count
 
-  print("{}/~{} words ({}%)".format(
-    total_words, estimated_word_count, percent_finished))
+  print(f"{total_words}/~{estimated_word_count} words ({percent_finished}%)")
